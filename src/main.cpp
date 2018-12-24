@@ -2,12 +2,14 @@
 #include <fstream>
 #include <vector>
 #include <map>
+#include <utility>
 #include <numeric>
+#include <ctype.h>
+#include <chrono>
 
-#define KMER_SIZE 8
 #define REGION_DIVIDER 100
 
-void generate_kmers(std::map<std::string, std::vector<int>> &kmer_map, std::string input, int k)
+void generate_kmers(std::map<std::string, std::vector<int>> &kmer_map, std::string &input, int k)
 {
     for (int i = 0; i <= input.length() - k; i++)
     {
@@ -25,9 +27,9 @@ void generate_kmers(std::map<std::string, std::vector<int>> &kmer_map, std::stri
     }
 }
 
-std::string read_reference()
+std::string read_reference(std::string path)
 {
-    std::ifstream file("C:\\Users\\leon\\Documents\\Bioinformatika\\Bioinformatics-MutationDetection\\train_data\\lambda.fasta");
+    std::ifstream file(path);
     std::string reference;
 
     if (file.is_open())
@@ -44,9 +46,9 @@ std::string read_reference()
     return reference;
 }
 
-void read_sequence_data(std::vector<std::string> &sequence_list)
+void read_sequence_data(std::vector<std::string> &sequence_list, std::string path)
 {
-    std::ifstream file("C:\\Users\\leon\\Documents\\Bioinformatika\\Bioinformatics-MutationDetection\\train_data\\lambda_simulated_reads.fasta");
+    std::ifstream file(path);
 
     if (file.is_open())
     {
@@ -60,26 +62,15 @@ void read_sequence_data(std::vector<std::string> &sequence_list)
     }
 }
 
-int main()
+std::pair<int, int> map_to_reference(std::map<std::string, std::vector<int>> &reference_kmer_map, std::string &reference, std::string &input, int k)
 {
-    std::ios::sync_with_stdio(false);
-    std::string reference = read_reference();
-    std::map<std::string, std::vector<int>> kmer_map;
-    generate_kmers(kmer_map, reference, KMER_SIZE);
-
-    std::vector<std::string> sequence_list;
-    read_sequence_data(sequence_list);
-
-    std::map<std::string, std::vector<int>> sequence_kmer_map;
-
     std::vector<int> region(reference.size() / REGION_DIVIDER + 1, 0);
 
-    auto interest_list = sequence_list[22];
-    for (int i = 0; i <= interest_list.length() - KMER_SIZE; i++)
+    for (int i = 0; i <= input.length() - k; i += k)
     {
-        std::string kmer = interest_list.substr(i, KMER_SIZE);
-        auto it = kmer_map.find(kmer);
-        if (it != kmer_map.end())
+        std::string kmer = input.substr(i, k);
+        auto it = reference_kmer_map.find(kmer);
+        if (it != reference_kmer_map.end())
         {
             auto index_list = it->second;
             for (auto i = index_list.begin(); i != index_list.end(); i++)
@@ -89,7 +80,7 @@ int main()
         }
     }
 
-    int sequence_region_length = (interest_list.size() / REGION_DIVIDER + 1);
+    int sequence_region_length = (input.size() / REGION_DIVIDER);
 
     int max = 0;
     int region_id = -1;
@@ -102,7 +93,69 @@ int main()
             region_id = i;
         }
     }
-    std::cout << region_id << "-" << region_id + sequence_region_length << " " << max << std::endl;
 
+    return std::pair<int, int>(region_id, region_id + sequence_region_length);
+}
+
+char get_complement_base(char c)
+{
+    switch (std::toupper(c))
+    {
+    case 'T':
+        return 'A';
+    case 'A':
+        return 'T';
+    case 'G':
+        return 'C';
+    case 'C':
+        return 'G';
+    default:
+        throw std::invalid_argument("Unknown base " + c);
+    }
+}
+
+void append_reverse_complements(std::vector<std::string> &sequence_list)
+{
+    int sequence_length = sequence_list.size();
+    for (int i = 0; i < sequence_length; i++)
+    {
+        std::string reverse_complement;
+        for (int j = sequence_list[i].size() - 1; j >= 0; j--)
+        {
+            reverse_complement += get_complement_base(sequence_list[i][j]);
+        }
+
+        sequence_list.push_back(reverse_complement);
+    }
+}
+
+int main(int argc, char *argv[])
+{
+    auto start = std::chrono::high_resolution_clock::now();
+
+    std::string args_reference_genome = argv[1];
+    std::string args_sequenced_reads = argv[2];
+    int k = atoi(argv[3]);
+
+    std::ios::sync_with_stdio(false);
+    std::string reference = read_reference(args_reference_genome);
+    std::map<std::string, std::vector<int>> kmer_map;
+    generate_kmers(kmer_map, reference, k);
+
+    std::vector<std::string> sequence_list;
+    read_sequence_data(sequence_list, args_sequenced_reads);
+    append_reverse_complements(sequence_list);
+
+    for (int i = 0; i < sequence_list.size(); i++)
+    {
+        auto result = map_to_reference(kmer_map, reference, sequence_list[i], k);
+        std::cout << i << " " << result.first << "-" << result.second << std::endl;
+    }
+
+    auto finish = std::chrono::high_resolution_clock::now();
+    std::cout << std::endl
+              << "Execution time: "
+              << std::chrono::duration_cast<std::chrono::nanoseconds>(finish - start).count() / 1e6
+              << "ms\n";
     return 0;
 }

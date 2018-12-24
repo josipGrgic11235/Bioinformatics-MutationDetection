@@ -30,3 +30,6 @@
 *.exe
 *.out
 *.app
+
+train_data
+.vscode
