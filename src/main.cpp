@@ -6,6 +6,7 @@
 #include <numeric>
 #include <ctype.h>
 #include <chrono>
+#include <algorithm>
 
 #define REGION_DIVIDER 100
 
@@ -129,6 +130,84 @@ void append_reverse_complements(std::vector<std::string> &sequence_list)
     }
 }
 
+int max(int a, int b, int c, int d)
+{
+    return std::max(std::max(a, b), std::max(c, d));
+}
+
+int get_index(int i, int j, int columns)
+{
+    return i * columns + j;
+}
+
+int get_base_index(char c)
+{
+    switch (std::toupper(c))
+    {
+    case 'A':
+        return 0;
+    case 'C':
+        return 1;
+    case 'G':
+        return 2;
+    case 'T':
+        return 3;
+    case '-':
+        return 4;
+    default:
+        throw std::invalid_argument("Unknown base " + c);
+    }
+}
+
+void apply_local_allign(std::string const &reference, std::string const &input)
+{
+    int scoring_matrix[5][5] = {
+        2, -4, -4, -4, -6,
+        -4, 2, -4, -4, -6,
+        -4, -4, 2, -4, -6,
+        -4, -4, -4, 2, -6,
+        -6, -6, -6, -6, 0};
+
+    int rows = input.length() + 1;
+    int columns = reference.length() + 1;
+    int cell_count = rows * columns;
+
+    int *matrix = new int[cell_count];
+
+    for (int i = 0; i < cell_count; i++)
+    {
+        matrix[i] = 0;
+    }
+
+    int max_value = 0;
+    int max_index_i = 0;
+    int max_index_j = 0;
+
+    for (int i = 1; i < rows; i++)
+    {
+        char current_input_character = input[i - 1];
+        int current_input_index = get_base_index(current_input_character);
+
+        for (int j = 1; j < columns; j++)
+        {
+            char current_reference_character = reference[j - 1];
+            int current_reference_index = get_base_index(current_reference_character);
+
+            int horizontal_distance = matrix[get_index(i, j - 1, columns)] + scoring_matrix[current_input_index][get_base_index('-')];
+            int vertical_distance = matrix[get_index(i - 1, j, columns)] + scoring_matrix[get_base_index('-')][current_reference_index];
+            int diagonal_distance = matrix[get_index(i - 1, j - 1, columns)] + scoring_matrix[current_input_index][current_reference_index];
+
+            matrix[get_index(i, j, columns)] = max(horizontal_distance, vertical_distance, diagonal_distance, 0);
+
+            if (matrix[get_index(i, j, columns)] > max_value)
+            {
+                max_index_i = i;
+                max_index_j = j;
+            }
+        }
+    }
+}
+
 int main(int argc, char *argv[])
 {
     auto start = std::chrono::high_resolution_clock::now();
@@ -157,5 +236,11 @@ int main(int argc, char *argv[])
               << "Execution time: "
               << std::chrono::duration_cast<std::chrono::nanoseconds>(finish - start).count() / 1e6
               << "ms\n";
+
+    /*std::string reference = "TATATGCGGCGTTT";
+    std::string input = "GGTATGCTGGCGCTA";
+
+    apply_local_allign(reference, input);*/
+
     return 0;
 }
