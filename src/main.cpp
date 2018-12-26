@@ -550,6 +550,14 @@ int main(int argc, char *argv[])
               << "Execution time: "
               << std::chrono::duration_cast<std::chrono::nanoseconds>(finish - start).count() / 1e6
               << "ms\n";
+
+    /*std::string reference = "TATATGCGGCGTTT";
+    std::string input = "GGTATGCTGGCGCTA";
+
+    apply_local_allign(reference, input);
+    apply_local_allign_optimized(reference, input, 3);
+    */
+
     return 0;
 }
 
