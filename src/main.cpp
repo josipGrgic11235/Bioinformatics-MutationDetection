@@ -8,11 +8,13 @@
 #include <chrono>
 #include <algorithm>
 #include <tuple>
+#include <cmath>
 
 #define REGION_DIVIDER 100
-#define M 2
-#define X -2
-#define G -3
+#define INPUT_DIVIDER 100
+#define M 5
+#define X -4
+#define G -5
 
 void generate_kmers(std::map<std::string, std::vector<int>> &kmer_map, std::string &input, int k)
 {
@@ -71,7 +73,7 @@ std::pair<int, int> map_to_reference(std::map<std::string, std::vector<int>> &re
 {
     std::vector<int> region(reference.size() / REGION_DIVIDER + 1, 0);
 
-    for (int i = 0; i <= input.length() - k; i += 2)
+    for (int i = 0; i <= input.size() - k; i += 2)
     {
         std::string kmer = input.substr(i, k);
         auto it = reference_kmer_map.find(kmer);
@@ -85,10 +87,10 @@ std::pair<int, int> map_to_reference(std::map<std::string, std::vector<int>> &re
         }
     }
 
-    int sequence_region_length = (input.size() / REGION_DIVIDER);
+    int sequence_region_length = (input.size() / REGION_DIVIDER) + 1;
 
     int max = 0;
-    int region_id = -1;
+    int region_id = 0;
     for (int i = 0; i <= region.size() - sequence_region_length; i++)
     {
         int region_count = std::accumulate(region.begin() + i, region.begin() + i + sequence_region_length, 0);
@@ -119,19 +121,14 @@ char get_complement_base(char c)
     }
 }
 
-void append_reverse_complements(std::vector<std::string> &sequence_list)
+std::string get_reverse_complement(std::string input)
 {
-    int sequence_length = sequence_list.size();
-    for (int i = 0; i < sequence_length; i++)
+    std::string reverse_complement;
+    for (int i = input.size() - 1; i >= 0; i--)
     {
-        std::string reverse_complement;
-        for (int j = sequence_list[i].size() - 1; j >= 0; j--)
-        {
-            reverse_complement += get_complement_base(sequence_list[i][j]);
-        }
-
-        sequence_list.push_back(reverse_complement);
+        reverse_complement += get_complement_base(input[i]);
     }
+    return reverse_complement;
 }
 
 int get_base_index(char c)
@@ -194,28 +191,10 @@ int get_distance(std::string s1, std::string s2)
 
 void insert_or_increment(std::map<int, std::map<std::string, int>> &result_map, std::string change_id, int index)
 {
-    auto it = result_map.find(index);
-    if (it != result_map.end())
-    {
-        auto change_map = it->second;
-        auto change_it = change_map.find(change_id);
-        if (change_it != change_map.end())
-        {
-            (change_it->second)++;
-        }
-        else
-        {
-            change_map.insert(std::make_pair(change_id, 1));
-        }
-    }
-    else
-    {
-        std::map<std::string, int> change_map{{change_id, 1}};
-        result_map.insert(std::make_pair(index, change_map));
-    }
+    result_map[index][change_id]++;
 }
 
-void backtrack(Score **matrix, int max_i, int max_j, int columns, std::string input, std::string reference, std::map<int, std::map<std::string, int>> &result_map)
+bool backtrack(Score **matrix, int max_i, int max_j, int columns, std::string input, std::string reference, std::map<int, std::map<std::string, int>> &result_map, int reference_offset)
 {
     int i = max_i;
     int j = max_j;
@@ -253,15 +232,13 @@ void backtrack(Score **matrix, int max_i, int max_j, int columns, std::string in
     std::reverse(input_result.begin(), input_result.end());
     std::reverse(reference_result.begin(), reference_result.end());
 
-    std::cout << reference_result << std::endl;
-    std::cout << input_result << std::endl;
+    //std::cout << reference_result << std::endl;
+    //std::cout << input_result << std::endl;
 
-    // TODO don't use bad reads
     double similarity = (1 - (float)get_distance(reference_result, input_result) / reference_result.size());
-    std::cout << similarity * 100 << std::endl;
-    if (similarity < 0.5)
+    if (similarity < 0.8)
     {
-        return;
+        return false;
     }
 
     int deletion_count = 0;
@@ -270,33 +247,35 @@ void backtrack(Score **matrix, int max_i, int max_j, int columns, std::string in
     int offset = j;
     for (int i = 0; i < reference_result.size(); i++)
     {
-        int corrected_index = offset + i - insertion_count;
+        int corrected_index = offset + i - insertion_count + reference_offset;
         if (reference_result[i] == '-')
         {
             //std::cout << "Insertion " << input_result[i] << " at index: " << corrected_index << std::endl;
-            insert_or_increment(result_map, std::string("I") + input_result[i], corrected_index);
+            result_map[corrected_index][std::string("I") + input_result[i]]++;
             insertion_count++;
         }
         else if (input_result[i] == '-')
         {
             //std::cout << "Deletion " << reference_result[i] << " at index: " << corrected_index << std::endl;
-            insert_or_increment(result_map, std::string("D") + input_result[i], corrected_index);
+            result_map[corrected_index][std::string("D") + input_result[i]]++;
             deletion_count++;
         }
         else if (input_result[i] != reference_result[i])
         {
             //std::cout << "Change " << input_result[i] << " at index: " << corrected_index << std::endl;
-            insert_or_increment(result_map, std::string("X") + input_result[i], corrected_index);
+            result_map[corrected_index][std::string("X") + input_result[i]]++;
         }
         else
         {
             //std::cout << "Match " << input_result[i] << " at index: " << corrected_index << std::endl;
-            insert_or_increment(result_map, std::string("M") + input_result[i], corrected_index);
+            result_map[corrected_index][std::string("M") + input_result[i]]++;
         }
     }
+
+    return true;
 }
 
-void apply_local_allign(std::string const &reference, std::string const &input, std::map<int, std::map<std::string, int>> &result_map)
+bool apply_local_allign(std::string const &reference, std::string const &input, std::map<int, std::map<std::string, int>> &result_map, int reference_offset)
 {
     int scoring_matrix[5][5] = {
         M, X, X, X, G,
@@ -353,16 +332,17 @@ void apply_local_allign(std::string const &reference, std::string const &input, 
         }
     }
 
-    backtrack(matrix, max_index_i, max_index_j, columns, input, reference, result_map);
+    bool backtrack_result = backtrack(matrix, max_index_i, max_index_j, columns, input, reference, result_map, reference_offset);
 
     for (int i = 0; i < rows; i++)
     {
         delete matrix[i];
     }
     delete[] matrix;
+
+    return backtrack_result;
 }
 
-// TODO možda preferirati matcheve???
 template <typename KeyType, typename ValueType>
 std::pair<KeyType, ValueType> get_max(const std::map<KeyType, ValueType> &x)
 {
@@ -372,13 +352,50 @@ std::pair<KeyType, ValueType> get_max(const std::map<KeyType, ValueType> &x)
     });
 }
 
+int get_substr_length(int max_length, int start, int length)
+{
+    return start + length > max_length ? max_length - start : length;
+}
+
+std::string get_substr(std::string input, int start, int length)
+{
+    int input_start = start;
+    int input_length = get_substr_length(input.size(), input_start, length);
+    return input.substr(input_start, input_length);
+}
+
+bool align(std::map<std::string, std::vector<int>> &kmer_map, std::map<int, std::map<std::string, int>> &result_map, std::string &reference, std::string &read_input, int k)
+{
+    bool align_result = false;
+    for (int j = 0; j < std::ceil(read_input.size() / (float)INPUT_DIVIDER); j++)
+    {
+        std::string input = get_substr(read_input, j * INPUT_DIVIDER, INPUT_DIVIDER);
+
+        // TODO prevent index out of bounds
+        if (input.size() < k)
+            continue;
+
+        auto result = map_to_reference(kmer_map, reference, input, k);
+
+        // Ain't nobody got time for that
+        /*int region_start = std::max(0, (result.first - 2) * REGION_DIVIDER);
+        std::string reference_substring = get_substr(reference, region_start, (result.second - result.first + 2) * REGION_DIVIDER);*/
+        int region_start = result.first * REGION_DIVIDER;
+        std::string reference_substring = get_substr(reference, region_start, (result.second - result.first) * REGION_DIVIDER);
+
+        align_result |= apply_local_allign(reference_substring, input, result_map, region_start);
+    }
+
+    return align_result;
+}
 int main(int argc, char *argv[])
 {
     auto start = std::chrono::high_resolution_clock::now();
 
-    /*std::string args_reference_genome = argv[1];
+    std::string args_reference_genome = argv[1];
     std::string args_sequenced_reads = argv[2];
-    int k = atoi(argv[3]);
+    std::string args_output_file_name = argv[3];
+    int k = atoi(argv[4]);
 
     std::ios::sync_with_stdio(false);
     std::string reference = read_reference(args_reference_genome);
@@ -388,42 +405,34 @@ int main(int argc, char *argv[])
 
     std::vector<std::string> sequence_list;
     read_sequence_data(sequence_list, args_sequenced_reads);
-    append_reverse_complements(sequence_list);
-
-    for (int i = 0; i < sequence_list.size(); i++)
-    {
-        auto result = map_to_reference(kmer_map, reference, sequence_list[i], k);
-        std::cout << i << " " << result.first << "-" << result.second << std::endl;
-    }*/
-
-    std::string reference = "AATTGGCGAACGTCCGGATGCTGAAGTGATGGCAGAGCGGAAAGAGCATTATTCAGCGCCCGTTCCTGACCGTGTGGCTTACCTGACCGCCGGTATCGACTCCCAGCTGGACCGCTACGAAATGCGCGTATGGGGATGGGGGCCGGGTGAGGAAAGCTGGCTGATTGACCGGCAGATTATTATGGGCCGCCACGACGATGAACAGACGCTGCTGCGTGTGGATGAGGCCATCAATAAAACCTATACCCGCCGGAATGGTGCAGAAATGTCGATATCCCGTATCTGCTGGGATACTGGCGGGATTGACCCGACCATTGTGTATGAACGCTCGAAAAAACATGGGCTGTTCCGGGTGATCCCCATTAAAGGGGCATCCGTCTACGGAAAGCCGGTGGCCAGCATGCCACGTAAGCGAAACAAAAACGGGGTTTACCTTACCGAAATCGGTACGGATACCGCGAAAGAGCAGATTTATAACCGCTTCACACTGACGCCGGAAGGGGATGAACCGCTTCCCGGTGCCGTTCACTTCCCGAATAACCCGGATATTTTTGATCTGACCGAAGCGCAGCAGCTGACTGCTGAAGAGCAGGTCGAAAAATGGGTGGATGGCAGGAAAAAAATACTGTGGGACAGCAAAAAGCGACGCAATGAGGCACTCGACTGCTTCGTTTATGCGCTGGCGGCGCTGCGCATCAGTATTTCCCGCTGGCAGCTGGATCTCAGTGCGCTGCTGGCGAGCCTGCAGGAAGAGGATGGTGCAGCAACCAACAAGAAAACACTGGCAGATTACGCCCGTGCCTTATCCGGAGAGGATGAATGACGCGACAGGAAGAACTTGCCGCTGCCCGTGCGGCACTGCATGACCTGATGACAGGTAAACGGGTGGCAACAGTACAGAAAGACGGACGAAGGGTGGAGTTTACGGCCACTTCCGTGTCTGACCTGAAAAAATATATTGCAGAGCTGGAAGTGCAGACCGGCATGACACAGCGACGCAGGGGACCTGCAGGATTTTATGTATGAAAACGCCCACCATTCCCACCCTTCTGGGGCCGGACGGCATGACATCGCTGCGCGAATATGCCGGTTATCACGGCGGTGGCAGCGGATTTGGAGGGCAGTTGCGGTCGTGGAACCCACCGAGTGAAAGTGTGGATGCAGCCCTGTTGCCCAACTTTACCCGTGGCAATGCCCGCGCAGACGATCTGGTACGCAATAACGGCTATGCCGCCAACGCCATCCAGCTGCATCAGGATCATATCGTCGGGTCTTTTTTCCGGCTCAGTCATCGCCCAAGCTGGCGCTATCTGGGCATCGGGGAGGAAGAAGCCCGTGCCTTTTCCCGCGAGGTTGAAGCGGCATGGAAAGAGTTTGCCGAGGATGACTGCTGCTGCATTGACGTTGAGCGAAAACGCACGTTTACCATGATGATTCGGGAAGGTGTGGCCATGCACGCCTTTAACGGTGAACTGTTCGTTCAGGCCACCTGGGATACCAGTTCGTCGCGGCTTTTCCGGACACAGTTCCGGATGGTCAGCCCGAAGCGCATCAGCAACCCGAACAATACCGGCGACAGCCGGAACTGCCGTGCCGGTGTGCAGATTAATGACAGCGGTGCGGCGCTGGGATATTACGTCAGCGAGGACGGGTATCCTGGCTGGATGCCGCAGAAATGGACATGGATACCCCGTGAGTTACCCGGCGGGCGCGCCTCGTTCATTCACGTTTTTGAACCCGTGGAGGACGGGCAGACTCGCGGTGCAAATGTGTTTTACAGCGTGATGGAGCAGATGAAGATGCTCGACACGCTGCAGAACACGCAGCTGCAGAGCGCCATTGTGAAGGCGATGTATGCCGCCACCATTGAGAGTGAGCTGGATACGCAGTCAGCGATGGATTTTATTCTGGGCGCGAACAGTCAGGAGCAGCGGGAAAGGCTGACCGGCTGGATTGGTGAAATTGCCGCGTATTACGCCGCAGCGCCGGTCCGGCTGGGAGGCGCAAAAGTACCGCACCTGATGCCGGGTGACTCACTGAACCTGCAGACGGCTCAGGATACGGATAACGGCTACTCCGTGTTTGAGCAGTCACTGCTGCGGTATATCGCTGCCGGGCTGGGTGTCTCGTATGAGCAGCTTTCCCGGAATTACGCCCAGATGAGCTACTCCACGGCACGGGCCAGTGCGAACGAGTCGTGGGCGTACTTTATGGGGCGGCGAAAATTCGTCGCATCCCGTCAGGCGAGCCAGATGTTTCTGTGCTGGCTGGAAGAGGCCATCGTTCGCCGCGTGGTGACGTTACCTTCAAAAGCGCGCTTCAGTTTTCAGGAAGCCCGCAGTGCCTGGGGGAACTGCGACTGGATAGGCTCCGGTCGTATGGCCATCGATGGTCTGAAAGAAGTTCAGGAAGCGGTGATGCTGATAGAAGCCGGACTGAGTACCTACGAGAAAGAGTGCGCAAAACGCGGTGACGACTATCAGGAAATTTTTGCCCAGCAGGTCCGTGAAACGATGGAGCGCCGTGCAGCCGGTCTTAAACCGCCCGCCTGGGCGGCTGCAGCATTTGAATCCGGGCTGCGACAATCAACAGAGGAGGAGAAGAGTGACAGCAGAGCTGCGTAATCTCCCGCATATTGCCAGCATGGCCTTTAATGAGCCGCTGATGCTTGAACCCGCCTATGCGCGGGTTTTCTTTTGTGCGCTTGCAGGCCAGCTTGGGATCAGCAGCCTGACGGATGCGGTGTCCGGCGACAGCCTGACTGCCCAGGAGGCACTCGCGACGCTGGCATTATCCGGTGATGATGACGGACCACGACAGGCCCGCAGTTATCAGGTCATGAACGGCATCGCCGTGCTGCCGGTGTCCGGCACGCTGGTCAGCCGGACGCGGGCGCTGCAGCCGTACTCGGGGATGACCGGTTACAACGGCATTATCGCCCGTCTGCAACAGGCTGCCAGCGATCCGATGGTGGACGGCATTCTGCTCGATATGGACACGCCCGGCGGGATGGTGGCGGGGGCATTTGACTGCGCTGACATCATCGCCCGTGTGCGTGACATAAAACCGGTATGGGCGCTTGCCAACGACATGAACTGCAGTGCAGGTCAGTTGCTTGCCAGTGCCGCCTCCCGGCGTCTGGTCACGCAGACCGCCCGGACAGGCTCCATCGGCGTCATGATGGCTCACAGTAATTACGGTGCTGCGCTGGAGAAACAGGGTGTGGAAATCACGCTGATTTACAGCGGCAGCCATAAGGTGGATGGCAACCCCTACAGCCATCTTCCGGATGACGTCCGGGAGACACTGCAGTCCCGGATGGACGCAACCCGCCAGATGTTTGCGCAGAAGGTGTCGGCATATACCGGCCTGTCCGTGCAGGTTGTGCTGGATACCGAGGCTGCAGTGTACAGCGGTCAGGAGGCCATTGATGCCGGACTGGCTGATGAACTTGTTAACAGCACCGATGCGATCACCGTCATGCGTGATGCACTGGATGCACGTAAATCCCGTCTCTCAGGAGGGCGAATGACCAAAGAGACTCAATCAACAACTGTTTCAGCCACTGCTTCGCAGGCTGACGTTACTGACGTGGTGCCAGCGACGGAGGGCGAGAACGCCAGCGCGGCGCAGCCGGACGTGAACGCGCAGATCACCGCAGCGGTTGCGGCAGAAAACAGCCGCATTATGGGGATCCTCAACTGTGAGGAGGCTCACGGACGCGAAGAACAGGCACGCGTGCTGGCAGAAACCCCCGGTATGACCGTGAAAACGGCCCGCCGCATTCTGGCCGCAGCACCACAGAGTGCACAGGCGCGCAGTGACACTGCGCTGGATCGTCTGATGCAGGGGGCACCGGCACCGCTGGCTGCAGGTAACCCGGCATCTGATGCCGTTAACGATTTGCTGAACACACCAGTGTAAGGGATGTTTATGACGAGCAAAGAAACCTTTACCCATTACCAGCCGCAGGGCAACAGTGACCCGGCTCATACCGCAACCGCGCCCGGCGGATTGAGTGCGAAAGCGCCTGCAATGACCCCGCTGATGCTGGACACCTCCAGCCGTAAGCTGGTTGCGTGGGATGGCACCACCGACGGTGCTGCCGTTGGCATTCTTGCGGTTGCTGCTGACCAGACCAGCACCACGCTGACGTTCTACAAGTCCGGCACGTTCCGTTATGAGGATGTGCTCTGGCCGGAGGCTGCCAGCGACGAGACGAAAAAACGGACCGCGTTTGCCGGAACGGCAATCAGCATCGTTTAACTTTACCCTTCATCACTAAAGGCCGCCTGTGCGGCTTTTTTTACGGGATTTTTTTATGTCGATGTACACAACCGCCCAACTGCTGGCGGCAAATGAGCAGAAATTTAAGTTTGATCCGCTGTTTCTGCGTCTCTTTTTCCGTGAGAGCTATCCCTTCACCACGGAGAAAGTCTATCTCTCACAAATTCCGGGACTGGTAAACATGGCGCTGTACGTTTCGCCGATTGTTTCCGGTGAGGTTATCCGTTCCCGTGGCGGCTCCACCTCTGAATTTACGCCGGGATATGTCAAGCCGAAGCATGAAGTGAATCCGCAGATGACCCTGCGTCGCCTGCCGGATGAAGATCCGCAGAATCTGGCGGACCCGGCTTACCGCCGCCGTCGCATCATCATGCAGAACATGCGTGACGAAGAGCTGGCCATTGCTCAGGTCGAAGAGATGCAGGCAGTTTCTGCCGTGCTTAAGGGCAAATACACCATGACCGGTGAAGCCTTCGATCCGGTTGAGGTGGATATGGGCCGCAGTGAGGAGAATAACATCACGCAGTCCGGCGGCACGGAGTGGAGCAAGCGTGACAAGTCCACGTATGACCCGACCGACGATATCGAAGCCTACGCGCTGAACGCCAGCGGTGTGGTGAATATCATCGTGTTCGATCCGAAAGGCTGGGCGCTGTTCCGTTCCTTCAAAGCCGTCAAGGAGAAGCTGGATACCCGTCGTGGCTCTAATTCCGAGCTGGAGACAGCGGTGAAAGACCTGGGCAAAGCGGTGTCCTATAAGGGGATGTATGGCGATGTGGCCATCGTCGTGTATTCCGGACAGTACGTGGAAAACGGCGTCAAAAAGAACTTCCTGCCGGACAACACGATGGTGCTGGGGAACACTCAGGCACGCGGTCTGCGCACCTATGGCTGCATTCAGGATGCGGACGCACAGCGCGAAGGCATTAACGCCTCTGCCCGTTACCCGAAAAACTGGGTGACCACCGGCGATCCGGCGCGTGAGTTCACCATGATTCAGTCAGCACCGCTGATGCTGCTGGCTGACCCTGATGAGTTCGTGTCCGTACAACTGGCGTAATCATGGCCCTTCGGGGCCATTGTTTCTCTGTGGAGGAGTCCATGACGAAAGATGAACTGATTGCCCGTCTCCGCTCGCTGGGTGAACAACTGAACCGTGATGTCAGCCTGACGGGGACGAAAGAAGAACTGGCGCTCCGTGTGGCAGAGCTGAAAGAGGAGCTTGATGACACGGATGAAACTGCCGGTCAGGACACCCCTCTCAGCCGGGAAAATGTGCTGACCGGACATGAAAATGAGGTGGGATCAGCGCAGCCGGATACCGTGATTCTGGATACGTCTGAACTGGTCACGGTCGTGGCACTGGTGAAGCTGCATACTGATGCACTTCACGCCACGCGGGATGAACCTGTGGCATTTGTGCTGCCGGGAACGGCGTTTCGTGTCTCTGCCGGTGTGGCAGCCGAAATGACAGAGCGCGGCCTGGCCAGAATGCAATAACGGGAGGCGCTGTGGCTGATTTCGATAACCTGTTCGATGCTGCCATTGCCCGCGCCGATGAAACGATACGCGGGTACATGGGAACGTCAGCCACCATTACATCCGGTGAGCAGTCAGGTGCGGTGATACGTGGTGTTTTTGATGACCCTGAAAATATCAGCTATGCCGGACAGGGCGTGCGCGTTGAAGGCTCCAGCCCGTCCCTGTTTGTCCGGACTGATGAGGTGCGGCAGCTGCGGCGTGGAGACACGCTGACCATCGGTGAGGAAAATTTCTGGGTAGATCGGGTTTCGCCGGATGATGGCGGAAGTTGTCATCTCTGGCTTGGACGGGGCGTACCGCCTGCCGTTAACCGTCGCCGCTGAAAGGGGGATGTATGGCCATAAAAGGTCTTGAGCAGGCCGTTGAAAACCTCAGCCGTATCAGCAAAACGGCGGTGCCTGGTGCCGCCGCAATGGCCATTAACCGCGTTGCTTCATCCGCGATATCGCAGTCGGCGTCACAGGTTGCCCGTGAGACAAAGGTACGCCGGAAACTGGTAAAGGAAAGGGCCAGGCTGAAAAGGGCCACGGTCAAAAATCCGCAGGCCAGAATCAAAGTTAACCGGGGGGATTTGCCCGTAATCAAGCTGGGTAATGCGCGGGTTGTCCTTTCGCGCCGCAGGCGTCGTAAAAAGGGGCAGCGTTCATCCCTGAAAGGTGGCGGCAGCGTGCTTGTGGTGGGTAACCGTCGTATTCCCGGCGCGTTTATTCAGCAACTGAAAAATGGCCGGTGGCATGTCATGCAGCGTGTGGCTGGGAAAAACCGTTACCCCATTGATGTGGTGAAAATCCCGATGGCGGTGCCGCTGACCACGGCGTTTAAACAAAATATTGAGCGGATACGGCGTGAACGTCTTCCGAAAGAGCTGGGCTATGCGCTGCAGCATCAACTGAGGATGGTAATAAAGCGATGAAACATACTGAACTCCGTGCAGCCGTACTGGATGCACTGGAGAAGCATGACACCGGGGCGACGTTTTTTGATGGTCGCCCCGCTGTTTTTGATGAGGCGGATTTTCCGGCAGTTGCCGTTTATCTCACCGGCGCTGAATACACGGGCGAAGAGCTGGACAGCGATACCTGGCAGGCGGAGCTGCATATCGAAGTTTTCCTGCCTGCTCAGGTGCCGGATTCAGAGCTGGATGCGTGGATGGAGTCCCGGATTTATCCGGTGATGAGCGATATCCCGGCACTGTCAGATTTGATCACCAGTATGGTGGCCAGCGGCTATGACTACCGGCGCGACGATGATGCGGGCTTGTGGAGTTCAGCCGATCTGACTTATGTCATTACCTATGAAATGTGAGGACGCTATGCCTGTACCAAATCCTACAATGCCGGTGAAAGGTGCCGGGACCACCCTGTGGGTTTATAAGGGGAGCGGTGACCCTTACGCGAATCCGCTTTCAGACGTTGACTGGTCGCGTCTGGCAAAAGTTAAAGACCTGACGCCCGGCGAACTGACCGCTGAGTCCTATGACGACAGCTATCTCGATGATGAAGATGCAGACTGGACTGCGACCGGGCAGGGGCAGAAATCTGCCGGAGATACCAGCTTCACGCTGGCGTGGATGCCCGGAGAGCAGGGGCAGCAGGCGCTGCTGGCGTGGTTTAATGAAGGCGATACCCGTGCCTATAAAATCCGCTTCCCGAACGGCACGGTCGATGTGTTCCGTGGCTGGGTCAGCAGTATCGGTAAGGCGGTGACGGCGAAGGAAGTGATCACCCGCACGGTGAAAGTCACCAATGTGGGACGTCCGTCGATGGCAGAAGATCGCAGCACGGTAACAGCGGCAACCGGCATGACCGTGACGCCTGCCAGCACCTCGGTGGTG";
-    std::string input = "AATGACCCTCATTGACTCCGCACAGACGCAACAATAGAGCTGCTACTTCGAAATGCGCGTATGGGGATGGGGGCCGGGTGAGCTAAGCTGGCTGATTGACCGGGTAATGGGCCGACGATGAACAAACGGCGCTGCGTGTGGATGGCCATCAATAAAACCTATACCCGCCGGAATGGTGCAGAAATGAGCCTCGATATGCCGTATCTGCTGGGGAATGCGACTGGCCGGTATTGACCCGAACATTGCGTTCTCGAAAACCGGCCGTCCGGGTGATCCCCATTAAAGGGGCATCCCGGAAAGCCGGTGGCCAGCATGCCACGTAAGCGAAACGAAAACGGGGTTACCTTACCGAAATCGGTACGGATACCGCGAAAGAGCAGATTTCATAACCGCTTCACACTGACGCCGGAAGGGGATGAACCGCTTCCCGGGGGGTTTCACTTCCCGAATAACCCGGATATTTTTGATCTGACCGAAGGGCAGCATTGATGAAGGCCAGGTCGTCAAAATGGGTGGATGGCAGGAAAAAAATACTGTGGGACTGCAAAAAGCGACGCAATGAGGCACTCGACTGCTACGTTTATGCGCTTGGCGGGTCGCATCATATTTTCCGCTGCGCTACTTACTGAGTGCGCTGGCAAAGTGCAGGCCCTGCAGCGAAGTCGTGCGCAATCCAACAAGAAAACACTGGCAGATTACGCCCGTACCTTATCCGGAAGGTCGAAGTACGGTACACGGATCAGTCGTAACCGTACCCGTGCACTGCATGACCTGATGACAGGTAAACGGGTGGCAGGACAGAAAACACGGGCGGTGGAGTTTACGGCCACTTAAAGACTGTCTGACATAAAGGACTATTGCATGATTTGGGAAGCACCAGAGGCATCCGTCATGACACAGCGAACGCAGGGGACCAAGCGGGATTTTATGTATGAAAACGTTCACCATTCCCACCCTTCTGGGGCGGACGGCATGACATCGCTGCGCAGGATGCCGTTTCACCGGTGGAGCGGATTTAGGGGCAGTGGTCGTAAACCCCGAGTGAAGTGTGGACGCAGCCCTGTGCCCCAACTTACAGGTGGCAATGCCCGTGTGTCTCATAACGGCTATGCCCCGCCATCCAGCTGCACCAGGATCATATCGTCGGGTCTTTTTTCCGGCTCAGTCATCGCCCAAGCTGGCGCTATCTGGCATCGGGGAGGAAGAAGCCCGTGCCTTTTCCCGCGAGGTTGAAGCGGCATGGAAAGAGTTTGCCGAGGATGACTGCTGCTGCACTGACGTTGAGCGAAAGACATTTTCCTTACCATCGAATGTTCGGTGAAGGGTGGGCGCCATGCACGCCTTTAACGGTGAGACTGTTCGTTCAGGCCACCTGGCGATACCAGTCGTCGCGGCTTTACCGGACACAGTTCCGGATGGTCAGCACGAAGCGCATCAGCAAACGTTAAATACCGGCATCAGCCGGAACTGCCGTGCCGGGTGCAGATTAATGACAGCTGTGCGACCCGGGGCTATTACGTCTGCGTAACGGCACCTCCCGTCTGGATGCCGCAGAAATGGACATGGATATCTCGTGAGTTTTACCCGGCGGGCCGCCTCGTTCATTCACGTTTTTGAACCCACCGTGGAGG";
 
     std::map<int, std::map<std::string, int>> result_map;
 
-    /*std::string reference = "TTTAAACCTAAGGAAA";
-    std::string input = "TTTAAACCTAAGGAAA";
-    std::string input2 = "TTTAAACCTAAGGAAA";*/
+    for (int i = 0; i < sequence_list.size(); i++)
+    {
+        if (!align(kmer_map, result_map, reference, sequence_list[i], k))
+        {
+            std::string reverse_complement = get_reverse_complement(sequence_list[i]);
+            align(kmer_map, result_map, reference, reverse_complement, k);
+        }
+        std::cout << "Processed " << i + 1 << "/" << sequence_list.size() << std::endl;
+    }
 
-    apply_local_allign(reference, input, result_map);
-    //apply_local_allign(reference, input2, result_map);
-
+    std::ofstream output_file;
+    output_file.open(args_output_file_name);
     for (int i = 0; i < reference.size(); i++)
     {
         auto it = result_map.find(i);
         if (it != result_map.end())
         {
             auto result = get_max(it->second);
-            if (result.first[0] == 'D')
+            if (result.first[0] != 'M' && result.second > 2)
             {
-                std::cout << "D," << i << ",-" << std::endl;
-            }
-            else if (result.first[0] != 'M')
-            {
-                std::cout << result.first[0] << "," << i << "," << result.first[1] << std::endl;
+                output_file << result.first[0] << "," << i << "," << result.first[1] << std::endl;
             }
         }
     }
+    output_file.close();
 
     auto finish = std::chrono::high_resolution_clock::now();
     std::cout << std::endl
@@ -432,3 +441,10 @@ int main(int argc, char *argv[])
               << "ms\n";
     return 0;
 }
+
+/*
+
+./a.exe C:\\Users\\leon\\Documents\\Bioinformatika\\Bioinformatics-MutationDetection\\train_data\\lambda.fasta C:\\Users\\leon\\Documents\\Bioinformatika\\Bioinformatics-MutationDetection\\train_data\\lambda_simulated_reads.fasta train_data\\lambda_result.csv 8
+
+python train_data/jaccard.py -b train_data/lambda_mutated.csv -a train_data/lambda_result.csv
+*/
