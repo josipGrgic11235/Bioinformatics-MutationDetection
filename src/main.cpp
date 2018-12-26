@@ -208,6 +208,117 @@ void apply_local_allign(std::string const &reference, std::string const &input)
     }
 }
 
+int get_array_size_at_row(int row, int max_columns, int k)
+{
+    return std::min(max_columns - 1, row + k) - std::max(0, row - k) + 1;
+}
+
+int get_first_index(int row, int k)
+{
+    return std::max(0, row - k);
+}
+
+int get_last_index(int row, int max_columns, int k)
+{
+    return std::min(max_columns - 1, row + k);
+}
+
+void apply_local_allign_optimized(std::string const &reference, std::string const &input, int k)
+{
+    int scoring_matrix[5][5] = {
+        {2, -4, -4, -4, -6},
+        {-4, 2, -4, -4, -6},
+        {-4, -4, 2, -4, -6},
+        {-4, -4, -4, 2, -6},
+        {-6, -6, -6, -6, 0}};
+
+    // Matrix init
+    int rows = input.length() + 1;
+    int columns = reference.length() + 1;
+
+    int **matrix = new int *[rows];
+    for (int i = 0; i < rows; i++)
+    {
+        matrix[i] = new int[get_array_size_at_row(i, columns, k)];
+        std::cout << "Array size at i = " << i << ": " << get_array_size_at_row(i, columns, k) << std::endl;
+    }
+    std::cout << std::endl;
+
+    for (int i = 0; i <= k; i++)
+    {
+        matrix[0][i] = 0;
+        matrix[i][0] = 0;
+    }
+
+    int max_value = 0;
+    int max_index_i = 0;
+    int max_index_j = 0;
+
+    for (int i = 1; i < rows; i++)
+    {
+        char current_input_character = input[i - 1];
+        int current_input_index = get_base_index(current_input_character);
+
+        int start_reference_index = std::max(0, i - k - 1);
+        int offset = (i <= k) ? 0 : 1;
+        int array_size = get_array_size_at_row(i, columns, k);
+        int start_array_index = offset == 0 ? 1 : 0;
+
+        for (int j = start_array_index; j < array_size; j++)
+        {
+            char current_reference_character = reference[start_reference_index + j - start_array_index];
+            int current_reference_index = get_base_index(current_reference_character);
+
+            int horizontal_distance = j == 0 ? 0 : (matrix[i][j - 1] + scoring_matrix[current_input_index][get_base_index('-')]);
+            int vertical_distance = matrix[i - 1][j + offset] + scoring_matrix[get_base_index('-')][current_reference_index];
+            int diagonal_distance = matrix[i - 1][j - 1 + offset] + scoring_matrix[current_input_index][current_reference_index];
+
+            int value = max(horizontal_distance, vertical_distance, diagonal_distance, 0);
+            std::cout << "(" << i << ", " << j << ") = " << value << std::endl;
+
+            matrix[i][j] = value;
+
+            if (matrix[i][j] > max_value)
+            {
+                max_value = matrix[i][j];
+                max_index_i = i;
+                max_index_j = j;
+            }
+        }
+    }
+
+    printf("        ");
+    for (int i = 0; i < reference.length(); i++)
+    {
+        printf("%4c", reference[i]);
+    }
+    std::cout << std::endl;
+
+    for (int i = 0; i < rows; i++)
+    {
+        if (i == 0)
+        {
+            printf("    ");
+        }
+        else
+        {
+            printf("%4c", input[i - 1]);
+        }
+
+        int offset = std::max(0, i - k);
+        for (int j = 0; j < offset; j++)
+        {
+            printf("    ");
+        }
+        for (int j = 0; j < get_array_size_at_row(i, columns, k); j++)
+        {
+            int element = matrix[i][j];
+            printf("%4d", element);
+        }
+        std::cout << std::endl;
+    }
+}
+
 int main(int argc, char *argv[])
 {
     auto start = std::chrono::high_resolution_clock::now();
@@ -240,7 +351,9 @@ int main(int argc, char *argv[])
     /*std::string reference = "TATATGCGGCGTTT";
     std::string input = "GGTATGCTGGCGCTA";
 
-    apply_local_allign(reference, input);*/
+    apply_local_allign(reference, input);
+    apply_local_allign_optimized(reference, input, 3);
+    */
 
     return 0;
 }
