@@ -364,30 +364,6 @@ std::string get_substr(std::string input, int start, int length)
     return input.substr(input_start, input_length);
 }
 
-bool align(std::map<std::string, std::vector<int>> &kmer_map, std::map<int, std::map<std::string, int>> &result_map, std::string &reference, std::string &read_input, int k)
-{
-    bool align_result = false;
-    for (int j = 0; j < std::ceil(read_input.size() / (float)INPUT_DIVIDER); j++)
-    {
-        std::string input = get_substr(read_input, j * INPUT_DIVIDER, INPUT_DIVIDER);
-
-        // TODO prevent index out of bounds
-        if (input.size() < k)
-            continue;
-
-        auto result = map_to_reference(kmer_map, reference, input, k);
-
-        // Ain't nobody got time for that
-        /*int region_start = std::max(0, (result.first - 2) * REGION_DIVIDER);
-        std::string reference_substring = get_substr(reference, region_start, (result.second - result.first + 2) * REGION_DIVIDER);*/
-        int region_start = result.first * REGION_DIVIDER;
-        std::string reference_substring = get_substr(reference, region_start, (result.second - result.first) * REGION_DIVIDER);
-
-        align_result |= apply_local_allign(reference_substring, input, result_map, region_start);
-    }
-
-    return align_result;
-}
 int get_array_size_at_row(int row, int max_columns, int k)
 {
     return std::min(max_columns - 1, row + k) - std::max(0, row - k) + 1;
@@ -532,15 +508,15 @@ bool apply_local_allign_optimized(std::string const &reference, std::string cons
         matrix[i] = new Score[get_array_size_at_row(i, columns, k)];
         //std::cout << "Array size at i = " << i << ": " << get_array_size_at_row(i, columns, k) << std::endl;
     }
-    std::cout << std::endl;
+    //std::cout << std::endl;
 
     Score *none = new Score(0, None);
 
-    for (int i = 0; i <= k; i++)
+    /*for (int i = 0; i <= k; i++)
     {
         matrix[0][i] = *none;
         matrix[i][0] = *none;
-    }
+    }*/
 
     int max_value = 0;
     int max_index_i = 0;
@@ -567,6 +543,7 @@ bool apply_local_allign_optimized(std::string const &reference, std::string cons
         for (int j = start_array_index; j < array_size; j++)
         {
             // current character from the reference stirng => start index + offset
+
             char current_reference_character = reference[start_reference_index + j - start_array_index];
             int current_reference_index = get_base_index(current_reference_character);
 
@@ -596,7 +573,7 @@ bool apply_local_allign_optimized(std::string const &reference, std::string cons
         }
     }
 
-    print_optimized_local_allign_matrix(matrix, rows, columns, reference, input, k);
+    //print_optimized_local_allign_matrix(matrix, rows, columns, reference, input, k);
 
     bool backtrack_result = backtrack_optimized(matrix, max_index_i, max_index_j, columns, input, reference, k, result_map, reference_offset);
 
@@ -609,6 +586,31 @@ bool apply_local_allign_optimized(std::string const &reference, std::string cons
     return backtrack_result;
 }
 
+bool align(std::map<std::string, std::vector<int>> &kmer_map, std::map<int, std::map<std::string, int>> &result_map, std::string &reference, std::string &read_input, int k)
+{
+    bool align_result = false;
+    for (int j = 0; j < std::ceil(read_input.size() / (float)INPUT_DIVIDER); j++)
+    {
+        std::string input = get_substr(read_input, j * INPUT_DIVIDER, INPUT_DIVIDER);
+
+        // TODO prevent index out of bounds
+        if (input.size() < k)
+            continue;
+
+        auto result = map_to_reference(kmer_map, reference, input, k);
+
+        // Ain't nobody got time for that
+        /*int region_start = std::max(0, (result.first - 2) * REGION_DIVIDER);
+        std::string reference_substring = get_substr(reference, region_start, (result.second - result.first + 2) * REGION_DIVIDER);*/
+        int region_start = result.first * REGION_DIVIDER;
+        std::string reference_substring = get_substr(reference, region_start, (result.second - result.first) * REGION_DIVIDER);
+
+        align_result |= apply_local_allign_optimized(reference_substring, input, 50, result_map, region_start);
+    }
+
+    return align_result;
+}
+
 int main(int argc, char *argv[])
 {
     auto start = std::chrono::high_resolution_clock::now();
@@ -617,6 +619,11 @@ int main(int argc, char *argv[])
     std::string args_sequenced_reads = argv[2];
     std::string args_output_file_name = argv[3];
     int k = atoi(argv[4]);
+
+    /*std::string args_reference_genome = "C:\\Users\\leon\\Documents\\Bioinformatika\\Bioinformatics-MutationDetection\\train_data\\lambda.fasta";
+    std::string args_sequenced_reads = "C:\\Users\\leon\\Documents\\Bioinformatika\\Bioinformatics-MutationDetection\\train_data\\lambda_simulated_reads.fasta";
+    std::string args_output_file_name = "train_data\\lambda_result.csv";
+    int k = 8;*/
 
     std::ios::sync_with_stdio(false);
     std::string reference = read_reference(args_reference_genome);
