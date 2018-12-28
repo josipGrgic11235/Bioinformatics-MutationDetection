@@ -3,11 +3,12 @@
 #include <algorithm>
 #include <iostream>
 
-LocalAlignment::LocalAlignment(ReadMapper &readMapper, std::string &reference, std::map<int, std::map<std::string, int>> &result_map, int k, int match_score, int change_score, int gap_score)
+LocalAlignment::LocalAlignment(ReadMapper &readMapper, std::string &reference, std::map<int, std::map<std::string, int>> &result_map, int local_align_k, int region_divider, int match_score, int change_score, int gap_score)
     : readMapper(readMapper),
       reference(reference),
       result_map(result_map),
-      k(k),
+      local_align_k(local_align_k),
+      region_divider(region_divider),
       match_score(match_score),
       change_score(change_score),
       gap_score(gap_score)
@@ -43,27 +44,14 @@ LocalAlignment::LocalAlignment(ReadMapper &readMapper, std::string &reference, s
     scoring_matrix['-']['T'] = gap_score;
 }
 
-// TODO Input regions are removed for now
-bool LocalAlignment::align(std::string &input)
+bool LocalAlignment::align(std::string &read_input)
 {
-    auto result = readMapper.map(input);
+    auto result = readMapper.map(read_input);
 
-    int region_start = result.start_index * readMapper.get_region_divider();
-    std::string reference_substring = get_substr(reference, region_start, (result.end_index - result.start_index) * readMapper.get_region_divider());
+    int region_start = result.start_index * region_divider;
+    std::string reference_region = get_substr(reference, region_start, (result.end_index - result.start_index) * region_divider);
 
-    return apply_local_allign(reference_substring, input, region_start);
-}
-
-std::string LocalAlignment::get_substr(std::string &input, int start, int length)
-{
-    int input_start = start;
-    int input_length = get_substr_length(input.size(), input_start, length);
-    return input.substr(input_start, input_length);
-}
-
-int LocalAlignment::get_substr_length(int max_length, int start, int length)
-{
-    return start + length > max_length ? max_length - start : length;
+    return apply_local_allign(reference_region, read_input, region_start);
 }
 
 bool LocalAlignment::apply_local_allign(std::string &reference_region, std::string &input, int reference_offset)
@@ -91,9 +79,9 @@ bool LocalAlignment::apply_local_allign(std::string &reference_region, std::stri
     {
         char current_input_character = input[i - 1];
 
-        int start_reference_index = std::max(0, i - k - 1);
+        int start_reference_index = std::max(0, i - local_align_k - 1);
         // offset: indicates if the first row element is moved in relation to the first in the previous row
-        int offset = (i <= k) ? 0 : 1;
+        int offset = (i <= local_align_k) ? 0 : 1;
         int array_size = get_array_size_at_row(i, columns);
         int start_array_index = offset == 0 ? 1 : 0;
         int prev_index_array_size = get_array_size_at_row(i - 1, columns);
@@ -112,7 +100,6 @@ bool LocalAlignment::apply_local_allign(std::string &reference_region, std::stri
 
             diagonal_distance->score = matrix[i - 1][j - 1 + offset].score + scoring_matrix[current_input_character][current_reference_character];
 
-            // Find max of horizontal_distance, vertical_distance and diagonal_distance
             if (diagonal_distance->score > vertical_distance->score && diagonal_distance->score > horizontal_distance->score)
             {
                 matrix[i][j] = *diagonal_distance;
@@ -125,6 +112,12 @@ bool LocalAlignment::apply_local_allign(std::string &reference_region, std::stri
             {
                 matrix[i][j] = *horizontal_distance;
             }
+            /* DUBUG
+            std::cout << "horizontal_distance: " << horizontal_distance->score << std::endl;
+            std::cout << "vertical_distance: " << vertical_distance->score << std::endl;
+            std::cout << "diagonal_distance: " << diagonal_distance->score << std::endl;
+            std::cout << "(" << i << ", " << j << ") = " << matrix[i][j].score << std::endl;
+            */
 
             if (matrix[i][j].score > max_value)
             {
@@ -134,6 +127,8 @@ bool LocalAlignment::apply_local_allign(std::string &reference_region, std::stri
             }
         }
     }
+
+    //print_optimized_local_allign_matrix(matrix, rows, columns, reference, input, k);
 
     bool backtrack_result = backtrack(matrix, max_index_i, max_index_j, columns, input, reference_region, reference_offset);
 
@@ -146,11 +141,6 @@ bool LocalAlignment::apply_local_allign(std::string &reference_region, std::stri
     return backtrack_result;
 }
 
-int LocalAlignment::get_array_size_at_row(int row, int max_columns)
-{
-    return std::min(max_columns - 1, row + k) - std::max(0, row - k) + 1;
-}
-
 bool LocalAlignment::backtrack(Score **matrix, int max_i, int max_j, int columns, std::string &input, std::string &reference_region, int reference_offset)
 {
     int i = max_i;
@@ -161,7 +151,7 @@ bool LocalAlignment::backtrack(Score **matrix, int max_i, int max_j, int columns
     std::string reference_result;
     reference_result.reserve(i + j);
 
-    int row_offset = (i <= k) ? 0 : 1;
+    int row_offset = (i <= local_align_k) ? 0 : 1;
     while (i > 0 && j > 0)
     {
         Score score = matrix[i][j];
@@ -169,12 +159,12 @@ bool LocalAlignment::backtrack(Score **matrix, int max_i, int max_j, int columns
         {
             j--;
             input_result += '-';
-            reference_result += reference_region[std::max(0, i - k) + j];
+            reference_result += reference_region[std::max(0, i - local_align_k) + j];
         }
         else if (score.action == Deletion)
         {
             i--;
-            row_offset = (i <= k) ? 0 : 1;
+            row_offset = (i <= local_align_k) ? 0 : 1;
             j += row_offset;
             input_result += input[i];
             reference_result += '-';
@@ -183,9 +173,9 @@ bool LocalAlignment::backtrack(Score **matrix, int max_i, int max_j, int columns
         {
             i--;
             j = j - 1 + row_offset;
-            row_offset = (i <= k) ? 0 : 1;
+            row_offset = (i <= local_align_k) ? 0 : 1;
             input_result += input[i];
-            reference_result += reference_region[std::max(0, i - k) + j];
+            reference_result += reference_region[std::max(0, i - local_align_k) + j];
         }
         else
         {
@@ -197,32 +187,38 @@ bool LocalAlignment::backtrack(Score **matrix, int max_i, int max_j, int columns
     std::reverse(reference_result.begin(), reference_result.end());
 
     double similarity = (1 - (float)get_distance(reference_result, input_result) / reference_result.size());
-    std::cout << similarity << " ";
     if (similarity < 0.8)
     {
         return false;
     }
 
+    int deletion_count = 0;
     int insertion_count = 0;
+    // TODO deletion_count?????
     int offset = j;
     for (int i = 0; i < reference_result.size(); i++)
     {
         int corrected_index = offset + i - insertion_count + reference_offset;
         if (reference_result[i] == '-')
         {
+            //std::cout << "Insertion " << input_result[i] << " at index: " << corrected_index << std::endl;
             result_map[corrected_index][std::string("I") + input_result[i]]++;
             insertion_count++;
         }
         else if (input_result[i] == '-')
         {
+            //std::cout << "Deletion " << reference_result[i] << " at index: " << corrected_index << std::endl;
             result_map[corrected_index][std::string("D") + input_result[i]]++;
+            deletion_count++;
         }
         else if (input_result[i] != reference_result[i])
         {
+            //std::cout << "Change " << input_result[i] << " at index: " << corrected_index << std::endl;
             result_map[corrected_index][std::string("X") + input_result[i]]++;
         }
         else
         {
+            //std::cout << "Match " << input_result[i] << " at index: " << corrected_index << std::endl;
             result_map[corrected_index][std::string("M") + input_result[i]]++;
         }
     }
@@ -230,7 +226,12 @@ bool LocalAlignment::backtrack(Score **matrix, int max_i, int max_j, int columns
     return true;
 }
 
-int LocalAlignment::get_distance(std::string s1, std::string s2)
+int LocalAlignment::get_array_size_at_row(int row, int max_columns)
+{
+    return std::min(max_columns - 1, row + local_align_k) - std::max(0, row - local_align_k) + 1;
+}
+
+int LocalAlignment::get_distance(std::string &s1, std::string &s2)
 {
     int distance = 0;
     for (int i = 0; i < s1.size(); i++)
@@ -243,37 +244,14 @@ int LocalAlignment::get_distance(std::string s1, std::string s2)
     return distance;
 }
 
-// Debug method
-void LocalAlignment::print_local_allign_matrix(Score **matrix, int rows, int columns, std::string &reference, std::string &input)
+int LocalAlignment::get_substr_length(int max_length, int start, int length)
 {
-    printf("        ");
-    for (int i = 0; i < reference.length(); i++)
-    {
-        printf("%4c", reference[i]);
-    }
-    std::cout << std::endl;
+    return start + length > max_length ? max_length - start : length;
+}
 
-    for (int i = 0; i < rows; i++)
-    {
-        if (i == 0)
-        {
-            printf("    ");
-        }
-        else
-        {
-            printf("%4c", input[i - 1]);
-        }
-
-        int offset = std::max(0, i - k);
-        for (int j = 0; j < offset; j++)
-        {
-            printf("    ");
-        }
-        for (int j = 0; j < get_array_size_at_row(i, columns); j++)
-        {
-            int element = matrix[i][j].score;
-            printf("%4d", element);
-        }
-        std::cout << std::endl;
-    }
+std::string LocalAlignment::get_substr(std::string &input, int start, int length)
+{
+    int input_start = start;
+    int input_length = get_substr_length(input.size(), input_start, length);
+    return input.substr(input_start, input_length);
 }

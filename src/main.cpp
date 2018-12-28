@@ -18,7 +18,7 @@
 
 #define REGION_DIVIDER 100
 #define INPUT_DIVIDER 4000
-#define LOCAL_ALLIGN_K 100
+#define LOCAL_ALLIGN_K 50
 #define CONFIRMATION_COUNT 3
 #define M 5
 #define X -4
@@ -55,8 +55,8 @@ int main(int argc, char *argv[])
 
     std::map<int, std::map<std::string, int>> result_map;
     ReadMapper readMapper(kmerIndex, REGION_DIVIDER, k);
+    LocalAlignment localAlignment(readMapper, reference, result_map, LOCAL_ALLIGN_K, REGION_DIVIDER, M, X, G);
 
-    LocalAlignment localAlignment(readMapper, reference, result_map, k, M, X, G);
     for (int i = 0; i < sequence_list.size(); i++)
     {
         if (!localAlignment.align(sequence_list[i]))
