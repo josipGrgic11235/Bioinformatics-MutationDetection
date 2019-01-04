@@ -7,6 +7,7 @@
 #include <iostream>
 #include <algorithm>
 #include <sstream>
+#include <fstream>
 
 template <typename KeyType, typename ValueType>
 std::pair<KeyType, ValueType> get_max(const std::map<KeyType, ValueType> &x)
@@ -17,7 +18,7 @@ std::pair<KeyType, ValueType> get_max(const std::map<KeyType, ValueType> &x)
     });
 }
 
-std::string MutationFinder::find_mutations(int k, int region_divider, int local_align_k, int match_score, int change_score, int gap_score, int confirmation_count, ExecutionTimer &timer)
+void MutationFinder::find_mutations(int k, int region_divider, int local_align_k, int match_score, int change_score, int gap_score, int confirmation_count, std::string output_file, ExecutionTimer &timer)
 {
     KmerIndex kmerIndex(reference, k);
     std::cout << "Done with generating reference genome k-mers." << std::endl;
@@ -48,7 +49,7 @@ std::string MutationFinder::find_mutations(int k, int region_divider, int local_
     }
     std::cout << "Done with read alignment." << std::endl;
 
-    std::string csv_result = parse_results(result_map, confirmation_count);
+    parse_results(result_map, confirmation_count, output_file);
 
     std::cout << "Execution completed." << std::endl;
     timer.printExecutionTime();
@@ -56,12 +57,13 @@ std::string MutationFinder::find_mutations(int k, int region_divider, int local_
               << getPeakRSS() / (1024 * 1024)
               << " MB"
               << std::endl;
-    return csv_result;
 }
 
-std::string MutationFinder::parse_results(std::map<int, std::map<std::string, int>> result_map, int confirmation_count)
+void MutationFinder::parse_results(std::map<int, std::map<std::string, int>> result_map, int confirmation_count, std::string output_path)
 {
-    std::ostringstream result_stream;
+    std::ofstream output_file;
+    output_file.open(output_path);
+
     for (int i = 0; i < reference.size(); i++)
     {
         auto it = result_map.find(i);
@@ -70,10 +72,9 @@ std::string MutationFinder::parse_results(std::map<int, std::map<std::string, in
             auto result = get_max(it->second);
             if (result.first[0] != 'M' && result.second > confirmation_count)
             {
-                result_stream << result.first[0] << "," << i << "," << result.first[1] << std::endl;
+                output_file << result.first[0] << "," << i << "," << result.first[1] << std::endl;
             }
         }
     }
-
-    return result_stream.str();
+    output_file.close();
 }

@@ -4,7 +4,6 @@
 #include <mutation_finder.hpp>
 #include <execution_timer.hpp>
 #include <iostream>
-#include <fstream>
 #include <vector>
 
 // TODO ram usage + uint_32t
@@ -24,11 +23,7 @@ int main(int argc, char *argv[])
     std::cout << std::endl;
 
     MutationFinder mutationFinder(reference, sequence_list);
-
-    std::ofstream output_file;
-    output_file.open(args.output_file_path);
-    output_file << mutationFinder.find_mutations(args.kmer_k, args.region_divider, args.local_align_k, args.match_score, args.change_score, args.gap_score, args.confirmation_count, timer);
-    output_file.close();
+    mutationFinder.find_mutations(args.kmer_k, args.region_divider, args.local_align_k, args.match_score, args.change_score, args.gap_score, args.confirmation_count, args.output_file_path, timer);
 
     return 0;
 }
