@@ -75,6 +75,8 @@ bool LocalAlignment::apply_local_allign(std::string &reference_region, std::stri
     Score *vertical_distance = new Score(0, Deletion);
     Score *diagonal_distance = new Score(0, Match);
 
+    int prev_index_array_size = get_array_size_at_row(0, columns);
+
     for (int i = 1; i < rows; i++)
     {
         char current_input_character = input[i - 1];
@@ -84,7 +86,6 @@ bool LocalAlignment::apply_local_allign(std::string &reference_region, std::stri
         int offset = (i <= local_align_k) ? 0 : 1;
         int array_size = get_array_size_at_row(i, columns);
         int start_array_index = offset == 0 ? 1 : 0;
-        int prev_index_array_size = get_array_size_at_row(i - 1, columns);
 
         for (int j = start_array_index; j < array_size; j++)
         {
@@ -126,6 +127,7 @@ bool LocalAlignment::apply_local_allign(std::string &reference_region, std::stri
                 max_index_j = j;
             }
         }
+        prev_index_array_size = array_size;
     }
 
     //print_optimized_local_allign_matrix(matrix, rows, columns, reference, input, k);
