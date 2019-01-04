@@ -3,7 +3,7 @@
 
 ### Usage:
 
-Compile: `g++ -I src/ src/*.cpp -o main.exe`
+Compile: `g++ -I src/ src/*.c src/*.cpp -O3 -lpsapi -o main.exe`
 
 Run: `./main.exe -r train_data/lambda.fasta -s train_data/lambda_simulated_reads.fasta -o train_data/lambda_result.csv`
 

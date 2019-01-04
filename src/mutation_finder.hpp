@@ -1,3 +1,4 @@
+#include <execution_timer.hpp>
 #include <string>
 #include <vector>
 #include <map>
@@ -10,5 +11,5 @@ class MutationFinder
 
 public:
   MutationFinder(std::string &reference, std::vector<std::string> &read_data) : reference(reference), read_data(read_data) {}
-  std::string find_mutations(int k, int region_divider, int local_align_k, int match_score, int change_score, int gap_score, int confirmation_count);
+  std::string find_mutations(int k, int region_divider, int local_align_k, int match_score, int change_score, int gap_score, int confirmation_count, ExecutionTimer &executionTimer);
 };

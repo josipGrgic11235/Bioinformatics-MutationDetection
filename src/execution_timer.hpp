@@ -1,11 +1,16 @@
 #include <chrono>
 
+#ifndef EXECUTION_TIMER
+#define EXECUTION_TIMER
+
 class ExecutionTimer
 {
-    std::chrono::time_point<std::chrono::system_clock> start_value;
+  std::chrono::time_point<std::chrono::system_clock> start_value;
 
-  public:
-    void start();
+public:
+  void start();
 
-    void printExecutionTime();
+  void printExecutionTime();
 };
+
+#endif
