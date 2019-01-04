@@ -228,7 +228,7 @@ bool LocalAlignment::backtrack(Score **matrix, int max_i, int max_j, int columns
 
 int LocalAlignment::get_array_size_at_row(int row, int max_columns)
 {
-    return std::min(max_columns - 1, row + local_align_k) - std::max(0, row - local_align_k) + 1;
+    return std::max(0, std::min(max_columns - 1, row + local_align_k) - std::max(0, row - local_align_k) + 1);
 }
 
 int LocalAlignment::get_distance(std::string &s1, std::string &s2)

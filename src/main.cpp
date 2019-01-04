@@ -5,21 +5,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
-#include <map>
-#include <utility>
-#include <numeric>
-#include <ctype.h>
-#include <chrono>
-#include <algorithm>
-#include <tuple>
-#include <cmath>
 
-/* 
-g++ -I src/ src/*.cpp -o main.exe
-python train_data/jaccard.py -b train_data/lambda_mutated.csv -a train_data/lambda_result.csv
-python train_data/jaccard.py -b train_data/ecoli_mutated.csv -a train_data/ecoli_result.csv
-
-*/
 int main(int argc, char *argv[])
 {
     auto args = ArgParser::parse(argc, argv);
@@ -38,15 +24,3 @@ int main(int argc, char *argv[])
 
     return 0;
 }
-
-/*
-
-./main.exe C:\\Users\\leon\\Documents\\Bioinformatika\\Bioinformatics-MutationDetection\\train_data\\lambda.fasta C:\\Users\\leon\\Documents\\Bioinformatika\\Bioinformatics-MutationDetection\\train_data\\lambda_simulated_reads.fasta train_data\\lambda_result.csv 8
-./a.exe C:\\Users\\leon\\Documents\\Bioinformatika\\Bioinformatics-MutationDetection\\train_data\\ecoli.fasta C:\\Users\\leon\\Documents\\Bioinformatika\\Bioinformatics-MutationDetection\\train_data\\ecoli_simulated_reads.fasta train_data\\ecoli_result.csv 8
-
-python train_data/jaccard.py -b train_data/lambda_mutated.csv -a train_data/lambda_result.csv
-python train_data/jaccard.py -b train_data/ecoli_mutated.csv -a train_data/ecoli_result.csv
-
- g++ -I src/ src/*.cpp -o main.exe
-
-*/
