@@ -1,3 +1,5 @@
+// Create by Josip
+
 #include <local_alignment.hpp>
 #include <string>
 #include <algorithm>
@@ -190,9 +192,7 @@ bool LocalAlignment::backtrack(Score **matrix, Max_Cell max_cell, int columns, s
         return false;
     }
 
-    int deletion_count = 0;
     int insertion_count = 0;
-    // TODO deletion_count?????
     int offset = j;
     // process the differences between the matched strings and update the result map
     for (int i = 0; i < reference_result.size(); i++)
@@ -208,7 +208,6 @@ bool LocalAlignment::backtrack(Score **matrix, Max_Cell max_cell, int columns, s
         {
             //std::cout << "Deletion " << reference_result[i] << " at index: " << corrected_index << std::endl;
             result_map[corrected_index][std::string("D") + input_result[i]]++;
-            deletion_count++;
         }
         else if (input_result[i] != reference_result[i])
         {

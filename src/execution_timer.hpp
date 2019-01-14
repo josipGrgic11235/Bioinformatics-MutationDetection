@@ -1,8 +1,13 @@
+// Created by Leon
+
 #include <chrono>
 
 #ifndef EXECUTION_TIMER
 #define EXECUTION_TIMER
 
+/**
+ * Class used to track execution time in milliseconds. 
+ **/
 class ExecutionTimer
 {
 #if defined(__APPLE__) && defined(__MACH__)
@@ -12,8 +17,14 @@ class ExecutionTimer
 #endif
 
 public:
+  /**
+   * Start execution timer.
+   **/
   void start();
 
+  /**
+   * Print current execution time.
+   **/
   void printExecutionTime();
 };
 

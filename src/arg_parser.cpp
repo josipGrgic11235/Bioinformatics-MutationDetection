@@ -1,7 +1,10 @@
+// Created by Leon
+
 #include <arg_parser.hpp>
 #include <algorithm>
 #include <iostream>
 
+// Returns the argument value at given position
 char *get_arg(char **begin, char **end, const std::string &option)
 {
     char **itr = std::find(begin, end, option);
@@ -12,6 +15,7 @@ char *get_arg(char **begin, char **end, const std::string &option)
     return 0;
 }
 
+// Checks whether the given argument is present
 bool arg_present(char **begin, char **end, const std::string &option)
 {
     return std::find(begin, end, option) != end;

@@ -1,3 +1,5 @@
+// Created by Leon
+
 #include <mutation_finder.hpp>
 #include <kmer_index.hpp>
 #include <read_mapper.hpp>
@@ -9,6 +11,7 @@
 #include <sstream>
 #include <fstream>
 
+// Find maximum value in a map
 template <typename KeyType, typename ValueType>
 std::pair<KeyType, ValueType> get_max(const std::map<KeyType, ValueType> &x)
 {
@@ -35,6 +38,7 @@ void MutationFinder::find_mutations(int k, int region_divider, int local_align_k
             std::string reverse_complement = ReverseComplement::get_reverse_complement(read_data[i]);
             localAlignment.align(reverse_complement);
         }
+        // Print every 100th alignment
         if ((i + 1) % 100 == 0)
         {
             timer.printExecutionTime();

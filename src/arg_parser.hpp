@@ -1,3 +1,5 @@
+// Created by Leon
+
 #include <string>
 
 #define REGION_DIVIDER 100
@@ -8,6 +10,17 @@
 #define G -7
 #define K 8
 
+/**
+ * Structure which holds arguments that are passed to the program.
+ * Initial values are assigned as following:
+ * region_divider = 100
+ * local_align_k = 50
+ * confirmation_count = 3
+ * match_score = 5
+ * change_score = -4
+ * gap_score = -7
+ * kmer_k = 8
+**/
 struct Args
 {
     int kmer_k = K;
@@ -26,5 +39,11 @@ struct Args
 class ArgParser
 {
   public:
+    /**
+     * Method that parses given arguments and returns Args structure.
+     * params: argc = argument count
+     * params: argv = arguments
+     * returns: Args structure filled with values from arguments
+    **/
     static Args parse(int argc, char *argv[]);
 };
