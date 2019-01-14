@@ -5,7 +5,7 @@
 #include <read_mapper.hpp>
 #include <local_alignment.hpp>
 #include <reverse_complement.hpp>
-#include <get_rss.hpp>
+#include <get_rss.h>
 #include <iostream>
 #include <algorithm>
 #include <sstream>

@@ -5,7 +5,7 @@
  *          http://creativecommons.org/licenses/by/3.0/deed.en_US
  */
 
-#include <get_rss.hpp>
+#include <get_rss.h>
 
 /**
  * Returns the peak (maximum so far) resident set size (physical

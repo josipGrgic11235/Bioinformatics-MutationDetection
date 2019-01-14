@@ -3,9 +3,9 @@
 
 ### Usage:
 
-Compile Windows: `g++ -I src/ src/*.cpp -O3 -lpsapi -m64 -std=c++11 -o main.exe`
+Compile Windows: `g++ -I src/ src/*.c src/*.cpp -O3 -lpsapi -m64 -std=c++11 -o main.exe`
 
-Compile Linux/OSX: `g++ -I src/ src/*.cpp -O3 -m64 -std=c++11 -o main.out`
+Compile Linux/OSX: `g++ -I src/ src/*.c src/*.cpp -O3 -m64 -std=c++11 -o main.out`
 
 Run: `./main.exe -r {PATH_TO_REFERENCE_GENOME} -s {PATH_TO_SEQUENCED_READS} -o {PATH_TO_OUTPUT_FILE}`
 
