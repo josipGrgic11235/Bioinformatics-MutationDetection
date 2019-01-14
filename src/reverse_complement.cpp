@@ -15,7 +15,7 @@ char ReverseComplement::get_complement_base(char c)
     case 'C':
         return 'G';
     default:
-        throw std::invalid_argument("Unknown base " + c);
+        throw std::invalid_argument("Unknown base");
     }
 }
 

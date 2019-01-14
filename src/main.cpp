@@ -6,7 +6,6 @@
 #include <iostream>
 #include <vector>
 
-// TODO ram usage + uint_32t
 int main(int argc, char *argv[])
 {
     ExecutionTimer timer;

@@ -20,6 +20,14 @@ struct Score
 
 class LocalAlignment
 {
+    unsigned const char A = 'A';
+    unsigned const char C = 'C';
+    unsigned const char G = 'G';
+    unsigned const char T = 'T';
+    unsigned const char X = 'X';
+    unsigned const char INDEL = '-';
+
+
     ReadMapper &readMapper;
     std::string &reference;
     std::map<int, std::map<std::string, int>> &result_map;

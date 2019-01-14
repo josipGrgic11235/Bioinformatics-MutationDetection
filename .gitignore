@@ -34,3 +34,5 @@
 train_data
 .vscode
 .vs
+.DS_Store
+main.out*

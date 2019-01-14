@@ -7,41 +7,41 @@ LocalAlignment::LocalAlignment(ReadMapper &readMapper, std::string &reference, s
     : readMapper(readMapper),
       reference(reference),
       result_map(result_map),
-      local_align_k(local_align_k),
       region_divider(region_divider),
+      local_align_k(local_align_k),
       match_score(match_score),
       change_score(change_score),
       gap_score(gap_score)
 {
-    scoring_matrix['A']['A'] = match_score;
-    scoring_matrix['A']['C'] = change_score;
-    scoring_matrix['A']['G'] = change_score;
-    scoring_matrix['A']['T'] = change_score;
+    scoring_matrix[A][A] = match_score;
+    scoring_matrix[A][C] = change_score;
+    scoring_matrix[A][G] = change_score;
+    scoring_matrix[A][T] = change_score;
 
-    scoring_matrix['C']['A'] = change_score;
-    scoring_matrix['C']['C'] = match_score;
-    scoring_matrix['C']['G'] = change_score;
-    scoring_matrix['C']['T'] = change_score;
+    scoring_matrix[C][A] = change_score;
+    scoring_matrix[C][C] = match_score;
+    scoring_matrix[C][G] = change_score;
+    scoring_matrix[C][T] = change_score;
 
-    scoring_matrix['G']['A'] = change_score;
-    scoring_matrix['G']['C'] = change_score;
-    scoring_matrix['G']['G'] = match_score;
-    scoring_matrix['G']['T'] = change_score;
+    scoring_matrix[G][A] = change_score;
+    scoring_matrix[G][C] = change_score;
+    scoring_matrix[G][G] = match_score;
+    scoring_matrix[G][T] = change_score;
 
-    scoring_matrix['T']['A'] = change_score;
-    scoring_matrix['T']['C'] = change_score;
-    scoring_matrix['T']['G'] = change_score;
-    scoring_matrix['T']['T'] = match_score;
+    scoring_matrix[T][A] = change_score;
+    scoring_matrix[T][C] = change_score;
+    scoring_matrix[T][G] = change_score;
+    scoring_matrix[T][T] = match_score;
 
-    scoring_matrix['A']['-'] = gap_score;
-    scoring_matrix['C']['-'] = gap_score;
-    scoring_matrix['G']['-'] = gap_score;
-    scoring_matrix['T']['-'] = gap_score;
+    scoring_matrix[A][INDEL] = gap_score;
+    scoring_matrix[C][INDEL] = gap_score;
+    scoring_matrix[G][INDEL] = gap_score;
+    scoring_matrix[T][INDEL] = gap_score;
 
-    scoring_matrix['-']['A'] = gap_score;
-    scoring_matrix['-']['C'] = gap_score;
-    scoring_matrix['-']['G'] = gap_score;
-    scoring_matrix['-']['T'] = gap_score;
+    scoring_matrix[INDEL][A] = gap_score;
+    scoring_matrix[INDEL][C] = gap_score;
+    scoring_matrix[INDEL][G] = gap_score;
+    scoring_matrix[INDEL][T] = gap_score;
 }
 
 bool LocalAlignment::align(std::string &read_input)
@@ -79,7 +79,7 @@ bool LocalAlignment::apply_local_allign(std::string &reference_region, std::stri
 
     for (int i = 1; i < rows; i++)
     {
-        char current_input_character = input[i - 1];
+        unsigned char current_input_character = input[i - 1];
 
         int start_reference_index = std::max(0, i - local_align_k - 1);
         // offset: indicates if the first row element is moved in relation to the first in the previous row
@@ -91,13 +91,13 @@ bool LocalAlignment::apply_local_allign(std::string &reference_region, std::stri
         {
             // current character from the reference string => start index + offset
 
-            char current_reference_character = reference_region[start_reference_index + j - start_array_index];
+            unsigned char current_reference_character = reference_region[start_reference_index + j - start_array_index];
 
-            horizontal_distance->score = j == 0 ? none->score : (matrix[i][j - 1].score + scoring_matrix[current_input_character]['-']);
+            horizontal_distance->score = j == 0 ? none->score : (matrix[i][j - 1].score + scoring_matrix[current_input_character][INDEL]);
 
             // no vertical value if it's the last element in the current row and the previous row length is smaller or equal than the current one
             bool no_vertical_value = j == (array_size - 1) && prev_index_array_size <= array_size;
-            vertical_distance->score = no_vertical_value ? 0 : matrix[i - 1][j + offset].score + scoring_matrix['-'][current_reference_character];
+            vertical_distance->score = no_vertical_value ? 0 : matrix[i - 1][j + offset].score + scoring_matrix[INDEL][current_reference_character];
 
             diagonal_distance->score = matrix[i - 1][j - 1 + offset].score + scoring_matrix[current_input_character][current_reference_character];
 

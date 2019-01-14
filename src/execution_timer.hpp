@@ -5,7 +5,7 @@
 
 class ExecutionTimer
 {
-  std::chrono::time_point<std::chrono::system_clock> start_value;
+  std::chrono::time_point<std::chrono::steady_clock, std::chrono::nanoseconds> start_value;
 
 public:
   void start();

@@ -3,15 +3,19 @@
 
 ### Usage:
 
-Compile Windows: `g++ -I src/ src/*.c src/*.cpp -O3 -lpsapi -m64 -o main.exe`
+Compile Windows: `g++ -I src/ src/*.c src/*.cpp -O3 -lpsapi -m64 -std=c++11 -Wall -o main.exe`
 
-Compile Linux/OSX: `g++ -I src/ src/*.c src/*.cpp -O3 -m64 -o main.exe`
+Compile Linux/OSX: `g++ -I src/ src/*.cpp -O3 -m64 -std=c++11 -Wall -o main.out`
 
-Run: `./main.exe -r train_data/lambda.fasta -s train_data/lambda_simulated_reads.fasta -o train_data/lambda_result.csv`
+Run Windows (lambda): `./main.exe -r train_data/lambda.fasta -s train_data/lambda_simulated_reads.fasta -o train_data/lambda_result.csv`
 
-Jaccard: `python train_data/jaccard.py -b train_data/lambda_mutated.csv -a train_data/lambda_result.csv`
+Run Linux/OSX (lambda): `./main.out -r train_data/lambda.fasta -s train_data/lambda_simulated_reads.fasta -o train_data/lambda_result.csv`
 
-Help: `./main.exe -h`
+Jaccard (lambda): `python train_data/jaccard.py -b train_data/lambda_mutated.csv -a train_data/lambda_result.csv`
+
+Help Windows: `./main.exe -h`
+
+Help Linux/OSX: `./main.out -h`
 
 ### Available flags:
 ```
