@@ -3,19 +3,18 @@
 
 ### Usage:
 
-Compile Windows: `g++ -I src/ src/*.c src/*.cpp -O3 -lpsapi -m64 -std=c++11 -Wall -o main.exe`
+Compile Windows: `g++ -I src/ src/*.cpp -O3 -lpsapi -m64 -std=c++11 -Wall -o main.exe`
 
 Compile Linux/OSX: `g++ -I src/ src/*.cpp -O3 -m64 -std=c++11 -Wall -o main.out`
 
-Run Windows (lambda): `./main.exe -r train_data/lambda.fasta -s train_data/lambda_simulated_reads.fasta -o train_data/lambda_result.csv`
 
-Run Linux/OSX (lambda): `./main.out -r train_data/lambda.fasta -s train_data/lambda_simulated_reads.fasta -o train_data/lambda_result.csv`
+Run Windows/Linux/OSX: `./main.exe -r {PATH_TO_REFERENCE_GENOME} -s {PATH_TO_SEQUENCE_READS} -o {PATH_TO_OUTPUT_FILE}`
 
-Jaccard (lambda): `python train_data/jaccard.py -b train_data/lambda_mutated.csv -a train_data/lambda_result.csv`
 
-Help Windows: `./main.exe -h`
+Jaccard: `python jaccard.py -b {PATH_TO_OUTPUT_FILE} -a {PATH_TO_REFERENCE_FILE}`
 
-Help Linux/OSX: `./main.out -h`
+
+Help Windows/Linux/OSX: `./main.exe -h`
 
 ### Available flags:
 ```
