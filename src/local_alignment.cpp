@@ -56,7 +56,7 @@ bool LocalAlignment::align(std::string &read_input)
 
 bool LocalAlignment::apply_local_allign(std::string &reference_region, std::string &input, int reference_offset)
 {
-    // Matrix init
+    // Matrix initialization
     int rows = input.length() + 1;
     int columns = reference_region.length() + 1;
 
@@ -64,12 +64,10 @@ bool LocalAlignment::apply_local_allign(std::string &reference_region, std::stri
     for (int i = 0; i < rows; i++)
     {
         matrix[i] = new Score[get_array_size_at_row(i, columns)];
-        //std::cout << "Array size at i = " << i << ": " << get_array_size_at_row(i, columns, k) << std::endl;
     }
 
-    int max_value = 0;
-    int max_index_i = 0;
-    int max_index_j = 0;
+    // Used for finding the cell element with the maximum score
+    Max_Cell max_cell = {0, 0, 0};
 
     Score *horizontal_distance = new Score(0, Insertion);
     Score *vertical_distance = new Score(0, Deletion);
@@ -77,12 +75,13 @@ bool LocalAlignment::apply_local_allign(std::string &reference_region, std::stri
 
     int prev_index_array_size = get_array_size_at_row(0, columns);
 
+    // Starting from 1 because the first row contains zeros
     for (int i = 1; i < rows; i++)
     {
         unsigned char current_input_character = input[i - 1];
 
         int start_reference_index = std::max(0, i - local_align_k - 1);
-        // offset: indicates if the first row element is moved in relation to the first in the previous row
+        // offset: indicates if the first row element is horizontally moved in relation to the first one in the previous row
         int offset = (i <= local_align_k) ? 0 : 1;
         int array_size = get_array_size_at_row(i, columns);
         int start_array_index = offset == 0 ? 1 : 0;
@@ -90,7 +89,6 @@ bool LocalAlignment::apply_local_allign(std::string &reference_region, std::stri
         for (int j = start_array_index; j < array_size; j++)
         {
             // current character from the reference string => start index + offset
-
             unsigned char current_reference_character = reference_region[start_reference_index + j - start_array_index];
 
             horizontal_distance->score = j == 0 ? none->score : (matrix[i][j - 1].score + scoring_matrix[current_input_character][INDEL]);
@@ -113,27 +111,21 @@ bool LocalAlignment::apply_local_allign(std::string &reference_region, std::stri
             {
                 matrix[i][j] = *horizontal_distance;
             }
-            /* DUBUG
-            std::cout << "horizontal_distance: " << horizontal_distance->score << std::endl;
-            std::cout << "vertical_distance: " << vertical_distance->score << std::endl;
-            std::cout << "diagonal_distance: " << diagonal_distance->score << std::endl;
-            std::cout << "(" << i << ", " << j << ") = " << matrix[i][j].score << std::endl;
-            */
 
-            if (matrix[i][j].score > max_value)
+            // update the info about the max cell if the current cell is the biggest so far
+            if (matrix[i][j].score > max_cell.value)
             {
-                max_value = matrix[i][j].score;
-                max_index_i = i;
-                max_index_j = j;
+                max_cell.value = matrix[i][j].score;
+                max_cell.i = i;
+                max_cell.j = j;
             }
         }
         prev_index_array_size = array_size;
     }
 
-    //print_optimized_local_allign_matrix(matrix, rows, columns, reference, input, k);
+    bool backtrack_result = backtrack(matrix, max_cell, columns, input, reference_region, reference_offset);
 
-    bool backtrack_result = backtrack(matrix, max_index_i, max_index_j, columns, input, reference_region, reference_offset);
-
+    // free the memory
     for (int i = 0; i < rows; i++)
     {
         delete matrix[i];
@@ -143,16 +135,18 @@ bool LocalAlignment::apply_local_allign(std::string &reference_region, std::stri
     return backtrack_result;
 }
 
-bool LocalAlignment::backtrack(Score **matrix, int max_i, int max_j, int columns, std::string &input, std::string &reference_region, int reference_offset)
+bool LocalAlignment::backtrack(Score **matrix, Max_Cell max_cell, int columns, std::string &input, std::string &reference_region, int reference_offset)
 {
-    int i = max_i;
-    int j = max_j;
+    // Initial values: the (i,j) coordinates from the cell with the greatest value
+    int i = max_cell.i;
+    int j = max_cell.j;
 
     std::string input_result;
     input_result.reserve(i + j);
     std::string reference_result;
     reference_result.reserve(i + j);
 
+    // constructing the most similar strings - reversed
     int row_offset = (i <= local_align_k) ? 0 : 1;
     while (i > 0 && j > 0)
     {
@@ -185,10 +179,12 @@ bool LocalAlignment::backtrack(Score **matrix, int max_i, int max_j, int columns
         }
     }
 
+    // reversing the reversed stirngs
     std::reverse(input_result.begin(), input_result.end());
     std::reverse(reference_result.begin(), reference_result.end());
 
     double similarity = (1 - (float)get_distance(reference_result, input_result) / reference_result.size());
+    // Only accept the matched stirng if their similarity is greater than 80%
     if (similarity < 0.8)
     {
         return false;
@@ -198,6 +194,7 @@ bool LocalAlignment::backtrack(Score **matrix, int max_i, int max_j, int columns
     int insertion_count = 0;
     // TODO deletion_count?????
     int offset = j;
+    // process the differences between the matched strings and update the result map
     for (int i = 0; i < reference_result.size(); i++)
     {
         int corrected_index = offset + i - insertion_count + reference_offset;
