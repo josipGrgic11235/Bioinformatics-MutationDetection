@@ -3,7 +3,7 @@
 #include <string>
 
 #define REGION_DIVIDER 100
-#define LOCAL_ALLIGN_K 50
+#define LOCAL_ALLIGN_K 100
 #define CONFIRMATION_COUNT 3
 #define M 5
 #define X -4
@@ -14,7 +14,7 @@
  * Structure which holds arguments that are passed to the program.
  * Initial values are assigned as following:
  * region_divider = 100
- * local_align_k = 50
+ * local_align_k = 100
  * confirmation_count = 3
  * match_score = 5
  * change_score = -4
